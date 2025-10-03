@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSandbox リアルタイムチャット</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f4f4f4; }
+        #chat-container { width: 400px; height: 600px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        #messages { flex-grow: 1; padding: 10px; overflow-y: auto; border-bottom: 1px solid #ddd; }
+        .message { margin-bottom: 8px; padding: 6px 10px; border-radius: 12px; max-width: 80%; word-wrap: break-word; }
+        .self { background-color: #dcf8c6; margin-left: auto; text-align: right; }
+        .other { background-color: #f1f0f0; margin-right: auto; text-align: left; }
+        .system { text-align: center; color: gray; font-size: 0.8em; }
+        #input-area { display: flex; padding: 10px; }
+        #message-input { flex-grow: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 8px; }
+        #send-button { background-color: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <header style="padding: 10px; background: #4CAF50; color: white; text-align: center;">リアルタイムチャット</header>
+        <div id="messages">
+            </div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="メッセージを入力..." autofocus>
+            <button id="send-button">送信</button>
+        </div>
+    </div>
+
+    <script>
+        const chatUrl = `ws://${window.location.host}`; // CodeSandboxのプレビューURLを使用
+        const ws = new WebSocket(chatUrl);
+        
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        // メッセージを画面に追加する関数
+        function addMessageToScreen(text, className) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', className);
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; // 自動スクロール
+        }
+
+        // サーバーからメッセージを受信したときの処理
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'system') {
+                    addMessageToScreen(data.text, 'system');
+                }
+            } catch (e) {
+                // シンプルなテキストメッセージとして処理
+                // ここでは常に 'other' として表示（自分の送信メッセージは下に別で処理）
+                // リアルなアプリでは、誰からのメッセージかをサーバー側で判別して送信します
+                addMessageToScreen(event.data, 'other');
+            }
+        };
+
+        // 送信処理
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text) {
+                // 1. 自分の画面に表示
+                addMessageToScreen(text, 'self');
+                
+                // 2. サーバーへ送信（サーバーが全クライアントにブロードキャストします）
+                ws.send(text);
+                
+                // 3. 入力欄をクリア
+                messageInput.value = '';
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
